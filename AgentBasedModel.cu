@@ -14,11 +14,11 @@ using namespace std;
 /*
 TODO define all probabilites ranges for each network
 */
+static heteroNetwork* newhn = {&hn};
 
 int main(int argc, char* argv[]){
-
-    int a[] ={1,2,3,4};
-
-    
+    printf("%0.2f\n", newhn->gamma[0]);
+    string word = "hello world";
+    printf("%s\n", word.c_str());
 
 }

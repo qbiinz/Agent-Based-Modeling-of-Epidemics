@@ -94,6 +94,125 @@ typedef struct sbT{
 
 }sb;
 
+/*
+network probability parameters
+*/
+
+//heterosexual network
+typedef struct heteroNetworkProbT{
+    //members of this network can hold 1k people may need to be reduced 
+    int members[1<<10];
+    //sexual network scale free gamma
+    float gamma;
+
+    //probability of looking for a sexual partner
+    float Plook;
+
+    //probability of casual partnership
+    float Pcasual;
+
+    //duration steady relation ship (months)
+    float durSteady;
+
+    //duration casual partnership (months)
+    float durCasual;
+
+    //probability of safe sex practice for stable partner
+    float PcondomSteady;
+
+    //probability of safe sex practice for casual partner
+    float PcondomCasual;
+
+    // rate of sexual intercourse for casual partner
+    float sexCausal;
+
+    //rate of sexual intercourse for stable partner
+    float sexSteady;
+
+    //probability of transmission through sexual network
+    float PdiseaseRisk;
+
+    //distance constraint for sexual partnerships
+    float distSex;
+}heteroNetworkProb;
+
+//MSM network
+typedef struct MSMNetworkProbT{
+    //members of this network can hold 1k people may need to be reduced 
+    int members[1<<10];
+    
+    //MSM scale free gamma
+    float gamma;
+
+    //probability of casual partnership
+    float Pcasual;
+
+    //duration steady relation ship (months)
+    float durSteady;
+
+    //duration casual partnership (months)
+    float durCasual;
+
+    //probability of safe sex practice for stable partner
+    float PcondomSteady;
+
+    //probability of safe sex practice for casual partner
+    float PcondomCasual;
+
+    // rate of sexual intercourse 
+    float sexRate;
+
+    //probability of transmission through MSM network
+    float PdiseaseRisk;
+
+    //distance constraint for sexual partnerships
+    float distSex;
+}MSMNetworkProb;
+
+//injection network
+typedef struct injectionNetworkProbT{
+    //IDU = injection drug user
+
+    //members of this network can hold 1k people may need to be reduced 
+    int members[1<<10];
+
+    //average size of scaling group
+    float gamma;
+
+    //proportion of injections that are shared for persons that share syringes
+    float Pshare;
+
+    //probability of separate of an injection relationship
+    float Pseperate;
+
+    //proportion of shared syringes are cleaned before use
+    float Pclean;
+
+    //max proportion of IDU in terms of overall population
+    float maxLink;
+
+    //rate of NON IDU to occasional IDU
+    float useRateRare;
+
+    //rate of occasional IDU regular
+    float useRateRegular;
+
+    //rate of occasional to quit
+    float useRateQuit;
+
+    //frequency of injection (monthly)
+    float injectRateCasual;
+
+    //frequency of injection (daily)
+    float injectRateRegular;
+
+    //probability of transmission through IDU network
+    float PdiseaseRisk;
+
+    //distance constraint for IDU partnerships
+    float distIDU;
+}injectionNetworkProb;
+
 //define the agent
 typedef struct agentT{
     // age of person
@@ -116,10 +235,21 @@ typedef struct agentT{
 
     //disease status
     ds disease;
+
+    //hetero network
+    heteroNetworkProb hNet;
+
+    //MSM network
+    MSMNetworkProb MSMNet;
+
+    //injection network 
+    injectionNetworkProb inNet;
+    
 } agent;
 
 /*
 //network probabilities structure
+These structs hold the ranges of probabilities that will be used to calculate a single probability for each agent
 */
 
 //heterosexual network
