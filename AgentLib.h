@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string>
+#include <cuda.h>
+#include <curand_kernel.h>
+
 
 
 using namespace std;
@@ -10,6 +13,9 @@ using namespace std;
     "*" denotes string might be turned into a struct or enum to simplify
 */
 
+//number of agents 
+const int population = 1<<10;
+const int windowSize = 1<<5;
 //sexual Identity 
 typedef enum sexualIdentityE{
     hetero,
@@ -362,5 +368,19 @@ typedef struct injectionNetwortT{
 extern heteroNetwork hn;
 extern MSMNetwork msm;
 extern injectionNetwork in;
+
+//kernel prototypes
+//random kernel setup
+__global__ void setupKernel(curandState *state,double seed);
+
+//random uniform number generator kernel 
+__global__ void generateUniformKernel(curandState *state, double *result);
+
+//choose agent based on normal distibution with mean at geographical location of current agent
+__global__ void chooseRandAgent(curandState *state,double *xCoord, double *yCoord, float std, int offset);
+
+//generate seed for random number
+double generateSeed(curandState *state);
+
 
 #endif
