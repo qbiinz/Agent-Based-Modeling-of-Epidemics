@@ -14,43 +14,31 @@ using namespace std;
 */
 
 //number of agents 
-const int population = 1<<10;
-const int windowSize = 1<<5;
-//sexual Identity 
-typedef enum sexualIdentityE{
-    hetero,
-    MSM,
-    bi
-}sexualIdentity;
+//population needs to be raised to an even power to make calculations eaiser
+//const int population = 1<<8;
+//const int windowSize = 1<<2;
 
-//type of relationship
-typedef enum relationshipTypeT{
-    casual,
-    steady
-}relationshipType;
+const int population = 1<<20;
+const int windowSize = 1<<10;
+const int NearDistance = 10;
+const int PDensity = 4; 
 
-//type of sexual act
-typedef enum intercourseT{
-    anal,
-    fellatio,
-    vaginal
-}intercourse;
+//maximum number of links for all network
+const int decayRate = 7;
+const int maxLinksHetero = population * 0.15;
+const int maxLinksMSM = population * 0.005;
+const int maxLinksIDU = population * 0.001;
+const int linkDecayHetero = maxLinksHetero * 0.1;
+const int linkDecayMSM = maxLinksMSM * 0.1;
+const int linkDecayIDU = maxLinksMSM * 0.3;
 
-//Disease progrssion state
-typedef enum progressE{
-    Acute, //of short duration
-    F0, //no fibrosis
-    F1, //portal fibrosis with no septa
-    F2, //portal fibrosis with few septa
-    F3, //portal fibrosis with numerous septa
-    F4, //compensated cirrohsis
-    LF, //liver failure
-    HCC, //Hepatocellular carcinoma
-    LT  //liver transplant
-}progression;
+//sexual network params
+const float c = .75;
+const double lambda = 1.2;
 
 //Drug Injection Behavior
 typedef struct dibT{
+    bool isUser;
     //injection frequency
     float freq;
     
@@ -65,26 +53,33 @@ typedef struct dibT{
 these need better descriptors
 */
 
+//type of network being evaluated
+typedef enum networkT{
+    MSM,
+    hetero,
+    IDU
+}network;
+
 //disease status
 typedef struct dsT{
     //infection status
     bool isInfected;
 
     //genotype    *
-    string genoType;
+    char genoType[20];
 
     //viral load     *
     float viralLoad;
 
     //disease progression
-    progression state;
+    char state[10];
 
 }ds;
 
 //sexual behavior 
 typedef struct sbT{
-    //type of sexual act    *
-    string action;
+    //type of sexual act  {anal, vaginal, other}
+    char action[7];
     
     //sexual activity rate
     float ActivityRate;
@@ -93,10 +88,10 @@ typedef struct sbT{
     float condomUse;
     
     //number of sexual partners
-    float numPartners;
+    int numPartners;
 
-    //type of relationship    *
-    relationshipType relationship;
+    //type of relationship   {steady, casual}
+    char relationship[6];
 
 }sb;
 
@@ -106,8 +101,7 @@ network probability parameters
 
 //heterosexual network
 typedef struct heteroNetworkProbT{
-    //members of this network can hold 1k people may need to be reduced 
-    int members[1<<10];
+
     //sexual network scale free gamma
     float gamma;
 
@@ -130,7 +124,7 @@ typedef struct heteroNetworkProbT{
     float PcondomCasual;
 
     // rate of sexual intercourse for casual partner
-    float sexCausal;
+    float sexCasual;
 
     //rate of sexual intercourse for stable partner
     float sexSteady;
@@ -140,15 +134,16 @@ typedef struct heteroNetworkProbT{
 
     //distance constraint for sexual partnerships
     float distSex;
-}heteroNetworkProb;
+}heteroNetProb;
 
 //MSM network
 typedef struct MSMNetworkProbT{
-    //members of this network can hold 1k people may need to be reduced 
-    int members[1<<10];
-    
+
     //MSM scale free gamma
     float gamma;
+
+     //probability of looking for a sexual partner
+     float Plook;
 
     //probability of casual partnership
     float Pcasual;
@@ -166,21 +161,20 @@ typedef struct MSMNetworkProbT{
     float PcondomCasual;
 
     // rate of sexual intercourse 
-    float sexRate;
+    float sexCasual;
+
+    float sexSteady;
 
     //probability of transmission through MSM network
     float PdiseaseRisk;
 
     //distance constraint for sexual partnerships
     float distSex;
-}MSMNetworkProb;
+}MSMNetProb;
 
 //injection network
 typedef struct injectionNetworkProbT{
     //IDU = injection drug user
-
-    //members of this network can hold 1k people may need to be reduced 
-    int members[1<<10];
 
     //average size of scaling group
     float gamma;
@@ -217,24 +211,27 @@ typedef struct injectionNetworkProbT{
 
     //distance constraint for IDU partnerships
     float distIDU;
-}injectionNetworkProb;
+}IDUNetProb;
 
 //define the agent
 typedef struct agentT{
     // age of person
     float age;
 
-    //biological sex
-    string sexType;
+    //biological sex {Male, Female}
+    char sexType[6];
 
-    //sexual id
-    sexualIdentity sexualId;
+    //sexual id {hetero, MSM, bi}
+    char sexualId[6];
 
     //immigration status
     bool isImmigraant;
+    
+    //number of sexual partners
+    int numPartnersSex;
 
     //sexual behavior
-    sb sex;
+    sb behaviorSex;
 
     //drug injection behavior
     dib drugs;
@@ -243,13 +240,13 @@ typedef struct agentT{
     ds disease;
 
     //hetero network
-    heteroNetworkProb hNet;
+    heteroNetProb hNet;
 
     //MSM network
-    MSMNetworkProb MSMNet;
+    MSMNetProb MSMNet;
 
     //injection network 
-    injectionNetworkProb inNet;
+    IDUNetProb IDUNet;
     
 } agent;
 
@@ -282,7 +279,7 @@ typedef struct heteroNetworkT{
     float PcondomCasual[2];
 
     // rate of sexual intercourse for casual partner
-    float sexCausal[2];
+    float sexCasual[2];
 
     //rate of sexual intercourse for stable partner
     float sexSteady[2];
@@ -292,13 +289,14 @@ typedef struct heteroNetworkT{
 
     //distance constraint for sexual partnerships
     float distSex[2];
-}heteroNetwork;
+}heteroNetRanges;
 
 //MSM network
 typedef struct MSMNetworkT{
         //MSM scale free gamma
     float gamma[2];
 
+    float Plook[2];
     //probability of casual partnership
     float Pcasual[2];
 
@@ -314,15 +312,18 @@ typedef struct MSMNetworkT{
     //probability of safe sex practice for casual partner
     float PcondomCasual[2];
 
-    // rate of sexual intercourse 
-    float sexRate[2];
+    // rate of sexual intercourse for casual partner
+    float sexCasual[2];
+
+    //rate of sexual intercourse for stable partner
+    float sexSteady[2];
 
     //probability of transmission through MSM network
     float PdiseaseRisk[2];
 
     //distance constraint for sexual partnerships
     float distSex[2];
-}MSMNetwork;
+}MSMNetRanges;
 
 //injection network
 typedef struct injectionNetwortT{
@@ -363,13 +364,63 @@ typedef struct injectionNetwortT{
 
     //distance constraint for IDU partnerships
     float distIDU[2];
-}injectionNetwork;
+}IDUNetRanges;
 
-extern heteroNetwork hn;
-extern MSMNetwork msm;
-extern injectionNetwork in;
+//define isEdge for thrust counting
+typedef struct isEdgeT{
+    __host__ __device__
+    bool operator()(int2 edge){
+        if (edge.x == -1 && edge.y == -1){
+            return false;
+        }
+        return true;
+    }
+}isEdge;
 
-//kernel prototypes
+//define struct to remove all non edges
+typedef struct compressNetT{
+    __host__ __device__
+    bool operator () (int2 num){
+        if (num.x == -1 && num.y == -1){
+            return false;
+        }
+        return true;
+    }
+}compressNet;
+
+//define struct to remove all -1
+typedef struct compressUserT{
+    __host__ __device__
+    bool operator () (int num){
+        if (num == -1){
+            return false;
+        }
+        return true;
+    }
+}compressUser;
+
+typedef struct isInfectedT{
+    __host__ __device__
+    bool operator()(agent person){
+        return person.disease.isInfected;
+    } 
+}infected;
+
+typedef struct countUserT{
+    __host__ __device__
+    bool operator()(int person){ 
+        return person != -1;
+    } 
+}countUser;
+
+extern heteroNetRanges hnr;
+extern MSMNetRanges msmr;
+extern IDUNetRanges idur;
+
+/*************************************************************
+kernel prototypes
+**************************************************************/
+
 //random kernel setup
 __global__ void setupKernel(curandState *state,double seed);
 
@@ -377,10 +428,39 @@ __global__ void setupKernel(curandState *state,double seed);
 __global__ void generateUniformKernel(curandState *state, double *result);
 
 //choose agent based on normal distibution with mean at geographical location of current agent
-__global__ void chooseRandAgent(curandState *state,double *xCoord, double *yCoord, float std, int offset);
+__global__ void chooseRandAgent(curandState *state,int *randAgent, network type, int* users, int numUsers);
+
+//populate georaphical list of agents
+__global__ void agentsInit(curandState *state, agent* agentListP, heteroNetRanges* hnrD, MSMNetRanges* msmrD, IDUNetRanges* idurD,bool* checkInfected, int* users);
+
+//fills the hetero network
+__global__ void fillHeteroNet(curandState *state,int2* hNetEdges, agent* agentList, int2* Male, int2* Female, int* coordD);
+
+//fill the MSM network
+__global__ void fillMSMNet(curandState *state, int2* MSMNetEdges, agent* agentList, int2* Male, int* coordD);
+
+//fill the IDU Network
+__global__ void fillIDUNet(curandState *state, int2* IDUNetEdges, agent* agentList, int* coordD, int* users, int numUsers);
+
+//trims a network based on max links 
+__global__ void trimNet(curandState *state, int2* netEdges, int2* dummy, int maxLinks, int numEdges);
+
+//updates the infected population
+__global__ void updateInfections(curandState *state, agent* agentList, int2* Edges, network type);
+
+//remove links after a certain timestep
+__global__ void removeLinks(curandState *state, int2* Edges, int numEdges, network type);
+
+//assign people with random locations
+__global__ void randomPos(curandState *state,int2 *Male, int2 *Female);
+
+__global__ void random(int2 *Male, int2 *Female,int2* Coed,unsigned int seed, int dist);
+/*************************************************************
+generic methods
+*************************************************************/
 
 //generate seed for random number
-double generateSeed(curandState *state);
+double generateSeed();
 
 
 #endif
