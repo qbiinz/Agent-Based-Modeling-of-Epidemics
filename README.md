@@ -4,3 +4,6 @@ Parallel algorithm in CUDA for agent based modeling of the propogation of infect
 This project tries to model a hepatitis C epidemic.  
 
 It uses network based transmission paths to calculate the probability of infection
+
+BUILD 
+g++ AgentModel.cu AgentLib.cu -o AgentModel
