@@ -1,0 +1,149 @@
+\documentclass[conference]{IEEEtran}
+
+
+% *** CITATION PACKAGES ***
+%
+\usepackage{cite}
+
+% *** GRAPHICS RELATED PACKAGES ***
+%
+\ifCLASSINFOpdf
+   \usepackage[pdftex]{graphicx}
+  % declare the path(s) where your graphic files are
+   \graphicspath{{images/}}
+   \DeclareGraphicsExtensions{.pdf,.jpeg,.png}
+\else
+ 
+\fi
+
+\usepackage{amsmath}
+\usepackage{todonotes}
+\usepackage{comment}
+
+
+\begin{document}
+% paper title
+\title{Parallel Agent Based Modeling of the Propagation of Infectious Diseases}
+
+% author names and affiliations
+% use a multiple column layout for up to three different
+% affiliations
+
+\author{
+\IEEEauthorblockN{Mahya Saffarpour, Felix Portillo, Zach Harris}
+}
+
+
+% make the title area
+\maketitle
+
+% As a general rule, do not put math, special symbols or citations
+% in the abstract
+\begin{abstract}
+Nowadays, a growing number of error-resilient applications demand for approximate computing, which allows less accuracy in order to achieve improvement in energy efficiency and reduction in silicon chip area. This paper proposes an approach that models possible inaccuracies in arithmetic units of a polynomial to qualify accuracy according to application constraints. The advantages and disadvantages of using different approaches for mentioned quality modeling are provided in this paper and the superiority of using Affine Arithmetic is explained.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Approximate Computing, Affine Arithmetic, Quality Modeling
+\end{IEEEkeywords}
+
+\IEEEpeerreviewmaketitle
+
+\section{Introduction}
+
+Epidemiology modeling and it’s high-performance implementation have been a popular field of research in parallel processing. However, interactions between large populations of infected agents and humans inside the system complicate the simulation process. Variables such as incubation time, mortality rate, forced infection between humans and agents, population size, etc. also contribute to how a specific disease spread. Therefore, for predicting the propagation of each disease, the suitable model should be selected based on its vectors for infection.\par
+Diseases like the flu, which are highly contagious, can be modeled using Ordinary Differential Equations (ODEs) and are better suited for whole population based models like in [1]. These kinds of models work well when there is an infection pathway that can touch multiple people without the need for the carrier to be present.\par
+Diseases like HIV and Hepatitis C. on the other hand need individual-agent based models because the pathways for infection depend on very specific interactions and relationships between people. The model proposed in [2] incorporates Hepatitis C. disease transmission pathways in the form of a network of potential interactions. The article also suggests three different algorithms to implement the model for the Canada population on CPU: parallel sliding region algorithm (SRA).\par
+However, using a sequential implementation may not be feasible considering the run-time required for modeling the agents, their daily interactions, and their vulnerability to infection individually.\par
+In this project we are focusing on design and implementation of a GPU-based parallel approach for implementing the agent-based Hepatitis C. model proposed in [2]. The highlights of our GPU-based algorithm are pinpointed in following:\par
+\begin{itemize}
+\item  Our algorithm can decrease the run time by 98.78\% in comparison to the best CPU-based parallel approach provided in [2] by assigning a thread to each agent instead of solving the problem geographically.
+
+\item The implementation is considering a general model with various parameters which can be tuned for different populations and can also model other similar diseases.
+
+\item Our algorithm can easily be used inside a multi-window approach (a common agent-based method) for scalability.
+
+\end{itemize}
+\par In what follows, the methodology and the results of this project are explained.\par
+
+Our methodology, results and conclusion are explained in section II, III, and IV consecutively. Section V contains the references used in this project. 
+
+\section{Methodology}
+In this section, the methodology of our algorithm is explained briefly.\par
+We choose Hepatitis C. as the disease we are attempting to model. We define infection pathways for this disease as networks that link people within a population. For Hepatitis C. there are three networks, one for injection drug users, IDU, and the other two for sexual behavior, hetero and male male, MSM. Female female relations aren’t considered because the risk of contracting the disease is very low [2]. The maximum number of links for any given network, MaxLinksN, is proportional to the size of the population. Only people that are apart of the networks have a chance for getting infected. As relationships dissolve over time, links are removed to make room for new connections. However, at every time step new connections are formed and the number of links increases until it reaches MaxLinksN.\par
+We define an agent with probabilities of joining a particular network and getting infected. They also have properties about their biological sex, drug behavior, sexual behavior, geographical location, and disease status. These properties are initialized in the beginning of the program using the cuRAND library and are unique to every agent.  For every iteration, every agent, Ix,  randomly chooses another agent, Iy, to see if they will form a link for a particular network based on a probability Pform, given by the following equation for sexual networks.\par
+
+%%%%%%%%%%%%%%eqn%%%%%%%%%%%%
+\begin{equation}
+\label{eq1}
+\tilde{x} =x_0 + \sum\limits_{i=1}^{n} {x_i\varepsilon_i} \;\;\;\;\;\;\;\;\;  \varepsilon_i\in [-1,1]
+\end{equation}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+Where Plook() is the probability that an agent is looking for a partner and link() is the number of partners that an agent already has. c is a preference constance used to distribute probabilities more evenly among agents. Distance, is the physical distance between the agents geographical location and distsex is the amount of distance two agents are willing to travel to form a link.  If a link is formed it is added to an network in the form of an edge array that holds the index of each agent in a population array. \par
+ 
+To update who is infected each sexual network is analyzed and the probability of getting infected, Ptransmit , is calculated as a function of disease risk, Pdisease-risk, and number of sexual partners of each agent, Nsex, given by the following eqation. \par
+
+%%%%%%%%%%%%%%eqn%%%%%%%%%%%%
+\begin{equation}
+\begin{split}
+\tilde{x}*\tilde{y} = {x_0}*{y_0} + \sum\limits_{i=1}^{n} {({x_0}*{y_i}+{x_i}*{y_0})\varepsilon_i}\\
++ (\sum\limits_{i=1}^{n} {|{x_i}|}\sum\limits_{i=1}^{n} {|{y_i}|}){\varepsilon_{n+1}} \;\;\;\;\;\;\;\;\;\;\;\;
+\end{split}
+\end{equation}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+The process is repeated for the injection network by swapping out the relevant probabilities.  Only agents that are infected can infect other agents and only agents in these networks can get infected. This process is repeated for 5000 iterations and every iteration is counted as a day.\par
+Figure -- shows the flowchart of the implemented algorithm.\par
+
+%%%%%%%%%%%%%%figure%%%%%%%%%%%%
+\begin{figure}[!t]
+\centering
+\includegraphics[width=3in]{framework.png}
+\caption{The proposed optimization-approximation framework}
+\label{fig_sim}
+\end{figure}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\section{Results}
+
+In this part the results of running the simulation with varying population sizes are provided. With the amount of information that each agent contains and the states that need to be stored for the random processes, the population size is the limiting factor when it comes to running these simulations. The size needed for a single agent is 340 Bytes so we can have a population of around $2^{24}$ before running out of memory. The initialization of the population size is the biggest factor that affect the number of people that get infected as seen in figure 2.\par
+
+%%%%%%%%%%%%%%figure%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+The trend in figure 2 is supported by comparing the trend with the data provided by CDC on Figure 3. This figure shows the number of acute hepatitis C cases in urban and nonurban areas (Kentucky, Tennessee, Virginia, and West Virginia, 2006–2012) among people younger than 30 years old [3]. For both figures, we see a trend that increasing the population size results in an overall increase of the number of infected people.\par
+
+%%%%%%%%%%%%%%figure%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+Our GPU-based implementation is 98.78\% faster than the former CPU-based parallel algorithm proposed in [2] for simulating a population of approximately 1,000,000 agents.\par
+In our algorithm, for a population size of $2^{20}$ and 5000 iterations, the run times for the GPU (all kernels) and the CPU is 184 seconds and 536 seconds respectively. Therefore, the overall run time of our implementation is 720 seconds (12 minutes) considering both GPU and CPU run times. The previous CPU-based parallel algorithm run time was 980 minutes for a population size equal to 980,836 agents.\par
+The longest running kernel was called 15000 times updating the infectionstatus with an average of 1.38 ms per call. The CPU runtime was still more than twice as much as the total GPU runtime. This is due to more serial nature in the kernel calls for operations populating each network and updating the infected agents.\par
+
+\section{Conclusion}
+We were able to successfully implement a parallel algorithm that simulated the spread of Hepatitis C using an agent based model. Using a system of networks to track the spread of an infection this parallel algorithm can be applied to model other diseases in a similar fashion.  We showed that the use of a GPU can drastically reduce the time needed to process large populations compared to that of a parallel CPU implementation. This approach allows a finer grained analysis for the disease spread leading to a more detailed and comprehensive prediction over time.\par
+
+%\begin{figure*}[!t]
+%\centering
+%\subfloat[Case I]{\includegraphics[width=2.5in]{box}%
+%\label{fig_first_case}}
+%\hfil
+%\subfloat[Case II]{\includegraphics[width=2.5in]{box}%
+%\label{fig_second_case}}
+%\caption{Simulation results.}
+%\label{fig_sim}
+%\end{figure*}
+
+% use section* for acknowledgment
+%\section*{Acknowledgment}
+
+%The authors would like to thank...
+
+
+\end{document}
+
+
